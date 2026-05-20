@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GradeScope — Room Scheduler & Analyser</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #F5F3EE;
+  --surface: #FDFCF9;
+  --surface2: #F0EDE6;
+  --border: #E2DDD4;
+  --border2: #D0C9BC;
+  --text: #1A1714;
+  --text2: #6B6157;
+  --text3: #9E9187;
+  --accent: #C4622D;
+  --accent2: #E8956A;
+  --accent-bg: #FBF0EA;
+  --green: #3A7D44;
+  --green-bg: #EAF4EC;
+  --blue: #2B5FA0;
+  --blue-bg: #EAF0FA;
+  --red: #B93A3A;
+  --red-bg: #FAEBEB;
+  --yellow: #9A7B1C;
+  --yellow-bg: #FAF5E4;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* ── HEADER ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;display:inline-block}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:.42rem 1.1rem;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text2);border-radius:var(--radius-sm);transition:.15s;display:flex;align-items:center;gap:6px}
+.nav-tab:hover{background:var(--surface2);color:var(--text)}
+.nav-tab.active{background:var(--accent);color:#fff}
+.nav-tab .step-badge{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:rgba(255,255,255,.25);color:inherit}
+.nav-tab:not(.active) .step-badge{background:var(--surface2);color:var(--text3)}
+
+/* ── LAYOUT ── */
+.container{max-width:900px;margin:0 auto;padding:2rem 1.5rem}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:1.75rem}
+.page-title{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);margin-bottom:.3rem}
+.page-sub{font-size:14px;color:var(--text2)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+.card-title{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.9rem;display:flex;align-items:center;gap:.4rem}
+.card-title i{font-size:14px;color:var(--accent)}
+
+/* ── UPLOAD ZONE ── */
+.upzone{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:2rem 1.5rem;text-align:center;cursor:pointer;transition:.2s;background:transparent;position:relative}
+.upzone:hover,.upzone.drag{border-color:var(--accent);background:var(--accent-bg)}
+.upzone-icon{width:48px;height:48px;background:var(--surface2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;transition:.2s}
+.upzone:hover .upzone-icon,.upzone.drag .upzone-icon{background:var(--accent-bg)}
+.upzone-icon i{font-size:22px;color:var(--text3)}
+.upzone:hover .upzone-icon i,.upzone.drag .upzone-icon i{color:var(--accent)}
+.upzone-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.25rem}
+.upzone-sub{font-size:12px;color:var(--text3)}
+.file-chip{display:inline-flex;align-items:center;gap:7px;padding:.35rem .9rem;background:var(--green-bg);border:1px solid #C3E0C9;border-radius:20px;font-size:12px;color:var(--green);margin-top:.65rem;font-weight:500}
+.file-chip i{font-size:14px}
+
+/* ── FORM CONTROLS ── */
+.field-row{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem}
+.field{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:130px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select{height:38px;padding:0 11px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:.15s;outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(196,98,45,.1)}
+.field input[type=number]{width:100%}
+
+/* ── BUTTONS ── */
+.btn{height:38px;padding:0 1.2rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;transition:.15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border2)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#B0582A;border-color:#B0582A}
+.btn-sm{height:30px;padding:0 .75rem;font-size:12px}
+.btn-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem}
+
+/* ── ALERTS ── */
+.alert{padding:.5rem .85rem;border-radius:var(--radius-sm);font-size:12.5px;margin-top:.5rem;display:flex;align-items:center;gap:.4rem}
+.alert-ok{background:var(--green-bg);color:var(--green);border:1px solid #C3E0C9}
+.alert-err{background:var(--red-bg);color:var(--red);border:1px solid #F0C0C0}
+.alert-info{background:var(--blue-bg);color:var(--blue);border:1px solid #C0D4F0}
+.hidden{display:none!important}
+
+/* ── METRICS ROW ── */
+.metrics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.75rem;margin-bottom:1rem}
+.metric-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;text-align:center;box-shadow:var(--shadow)}
+.metric-val{font-family:'DM Serif Display',serif;font-size:24px;color:var(--text)}
+.metric-lbl{font-size:11px;color:var(--text3);margin-top:2px;font-weight:500}
+
+/* ── DAY TABS ── */
+.daytabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:1rem;overflow-x:auto;padding-bottom:0}
+.dtab{padding:.45rem 1rem;font-size:13px;cursor:pointer;border:none;background:none;color:var(--text2);border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-family:'DM Sans',sans-serif;font-weight:400;white-space:nowrap;transition:.12s}
+.dtab:hover{background:var(--surface2)}
+.dtab.active{color:var(--accent);font-weight:600;border-bottom:2px solid var(--accent);background:transparent}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.bg-h{background:#D4EDD8;color:#1F5E28}
+.bg-m{background:#FCF0DC;color:#7A5010}
+.bg-l{background:#F9DFDF;color:#8C2222}
+.bg-grade-ap{background:#C8E6CC;color:#1A5C22}
+.bg-grade-a{background:#D8EED9;color:#255C2A}
+.bg-grade-bp{background:#E8F4E8;color:#2E6B35}
+.bg-grade-b{background:#FEF9DC;color:#7A6010}
+.bg-grade-c{background:#FDECDC;color:#8A4410}
+.bg-grade-d{background:#FAE0E0;color:#8A2020}
+.bg-grade-na{background:var(--surface2);color:var(--text3)}
+
+/* ── ROOM CARDS GRID ── */
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:.75rem}
+.room-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;box-shadow:var(--shadow)}
+.room-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.room-card-title{font-size:13px;font-weight:600;color:var(--text)}
+.room-card-count{font-size:11px;color:var(--text3)}
+.student-row{display:flex;justify-content:space-between;align-items:center;padding:3.5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.student-row:last-of-type{border-bottom:none}
+.student-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;color:var(--text)}
+.room-avg-bar{margin-top:.55rem;padding-top:.55rem;border-top:1px solid var(--border)}
+.avg-label{font-size:11px;color:var(--text3);margin-bottom:3px}
+.mini-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.mini-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+
+/* ── GRADE TABLE (Page 2) ── */
+.grade-section-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:.5rem;margin-top:1rem;display:flex;align-items:center;gap:.4rem}
+.grade-section-title:first-child{margin-top:0}
+.room-label-tag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .65rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:500;color:var(--text2)}
+.gtable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:.4rem}
+.gtable th{text-align:left;padding:.45rem .6rem;border-bottom:2px solid var(--border);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.gtable td{padding:.42rem .6rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.gtable tbody tr:hover{background:var(--surface2)}
+.gtable tfoot td{font-weight:600;background:var(--surface2);border-top:2px solid var(--border);font-size:12px}
+.gtable input{width:62px;height:28px;padding:0 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;text-align:center;font-family:'DM Sans',sans-serif}
+.gtable input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(196,98,45,.1)}
+.score-pill{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--text)}
+.room-avg-highlight{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .8rem;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid}
+
+/* ── PAGE 3 GRADE ADJUST ── */
+.room-select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.65rem;margin-bottom:1rem}
+.room-select-card{border:2px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem;cursor:pointer;transition:.15s;background:var(--surface)}
+.room-select-card:hover{border-color:var(--accent2);background:var(--accent-bg)}
+.room-select-card.selected{border-color:var(--accent);background:var(--accent-bg)}
+.room-select-card.selected .rsc-name{color:var(--accent)}
+.rsc-name{font-size:13px;font-weight:600;margin-bottom:.2rem}
+.rsc-score{font-size:20px;font-weight:500;font-family:'DM Serif Display',serif;margin:.1rem 0}
+.rsc-grade{font-size:11px;color:var(--text3)}
+.factor-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.factor-row{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.factor-option{flex:1;min-width:200px;border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;cursor:pointer;transition:.15s}
+.factor-option:hover{border-color:var(--accent2)}
+.factor-option.selected{border-color:var(--accent);background:var(--accent-bg)}
+.factor-option-title{font-size:13px;font-weight:600;margin-bottom:.3rem;display:flex;align-items:center;gap:.4rem}
+.factor-option-desc{font-size:12px;color:var(--text3)}
+.preview-table{width:100%;border-collapse:collapse;font-size:13px}
+.preview-table th{text-align:left;padding:.45rem .6rem;border-bottom:2px solid var(--border);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.preview-table td{padding:.45rem .6rem;border-bottom:1px solid var(--border)}
+.delta-pos{color:var(--green);font-weight:600}
+.delta-neg{color:var(--red);font-weight:600}
+.delta-zero{color:var(--text3)}
+.chart-wrap{position:relative;width:100%;height:280px}
+
+/* ── RUBRIC ── */
+.rubric-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.35rem}
+.rubric-row input{height:30px;padding:0 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif}
+.rubric-row input:focus{border-color:var(--accent);outline:none}
+.ri-min{width:70px}.ri-max{width:70px}.ri-grade{flex:1}
+.rubric-hdr{display:flex;gap:.4rem;margin-bottom:.25rem}
+.rubric-hdr span{font-size:11px;color:var(--text3);font-weight:500}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><span class="logo-dot"></span>GradeScope</div>
+  <nav class="nav-tabs" role="tablist">
+    <button class="nav-tab active" onclick="goPg(0)" role="tab" aria-selected="true">
+      <span class="step-badge">1</span>Room Assignment
+    </button>
+    <button class="nav-tab" onclick="goPg(1)" role="tab" aria-selected="false">
+      <span class="step-badge">2</span>Grade Analysis
+    </button>
+    <button class="nav-tab" onclick="goPg(2)" role="tab" aria-selected="false">
+      <span class="step-badge">3</span>Grade Adjustment
+    </button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ════════════════ PAGE 1 ════════════════ -->
+<div id="pg0" class="page active">
+<div class="container">
+  <div class="page-header">
+    <div class="page-title">Room Assignment</div>
+    <div class="page-sub">Upload a student file and distribute students across rooms with balanced GPA spread.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-upload"></i>Student file</div>
+    <div class="upzone" id="dz0" onclick="document.getElementById('fi0').click()" role="button" tabindex="0" aria-label="Upload student Excel file">
+      <div class="upzone-icon"><i class="ti ti-file-spreadsheet"></i></div>
+      <div class="upzone-title">Drop your Excel file here</div>
+      <div class="upzone-sub">Requires columns: <strong>G_GPA</strong> and <strong>N</strong> &nbsp;·&nbsp; .xlsx or .xls</div>
+    </div>
+    <div id="fc0" class="file-chip hidden"><i class="ti ti-circle-check"></i><span id="fn0"></span></div>
+    <input type="file" id="fi0" accept=".xlsx,.xls" style="display:none" aria-hidden="true">
+    <div id="fm0" class="hidden"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-settings"></i>Configuration</div>
+    <div class="field-row">
+      <div class="field"><label>Number of days</label><input type="number" id="cfg_days" min="1" max="30" value="3"></div>
+      <div class="field"><label>Number of rooms</label><input type="number" id="cfg_rooms" min="1" max="30" value="4"></div>
+      <div class="field"><label>Distribution</label>
+        <select id="cfg_strat">
+          <option value="snake">Snake draft — balanced spread</option>
+          <option value="stratified">Stratified tiers</option>
+          <option value="random">Random GPA mix</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="runAssign()"><i class="ti ti-layout-grid"></i>Assign rooms</button>
+      <button class="btn" onclick="runAssign()"><i class="ti ti-refresh"></i>Reshuffle</button>
+    </div>
+  </div>
+
+  <div id="p1results" class="hidden">
+    <div class="metrics-row" id="p1metrics"></div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-door"></i>Room assignments by day</div>
+      <div class="legend" style="display:flex;gap:10px;margin-bottom:.85rem;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:#3A7D44;display:inline-block"></span>High GPA ≥ 3.5</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:#9A7B1C;display:inline-block"></span>Mid GPA 2.5–3.49</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:#B93A3A;display:inline-block"></span>Low GPA &lt; 2.5</span>
+      </div>
+      <div class="daytabs" id="p1tabs"></div>
+      <div id="p1panels"></div>
+    </div>
+    <div class="btn-row" style="margin-bottom:1rem">
+      <button class="btn" onclick="exportAssign()"><i class="ti ti-download"></i>Download Excel</button>
+      <button class="btn btn-primary" onclick="goPg(1)"><i class="ti ti-arrow-right"></i>Next: Grade Analysis</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ PAGE 2 ════════════════ -->
+<div id="pg1" class="page">
+<div class="container">
+  <div class="page-header">
+    <div class="page-title">Grade Analysis</div>
+    <div class="page-sub">Upload the examiners' grade sheet. Student 1 & 2 averages are computed per group, then room averages are calculated per day.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-upload"></i>Examiners grade file</div>
+    <div class="upzone" id="dz1" onclick="document.getElementById('fi1').click()" role="button" tabindex="0" aria-label="Upload examiners grade Excel file">
+      <div class="upzone-icon"><i class="ti ti-file-analytics"></i></div>
+      <div class="upzone-title">Drop the examiners responses file here</div>
+      <div class="upzone-sub">Columns: Group Number · Student 1/2 grades (Examiners 1–3 Report & Presentation) · Room Number · day</div>
+    </div>
+    <div id="fc1" class="file-chip hidden"><i class="ti ti-circle-check"></i><span id="fn1"></span></div>
+    <input type="file" id="fi1" accept=".xlsx,.xls" style="display:none" aria-hidden="true">
+    <div id="fm1" class="hidden"></div>
+  </div>
+
+  <div id="p2rubricCard" class="card">
+    <div class="card-title"><i class="ti ti-list-numbers"></i>Grade rubric <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:.3rem">(scores out of 5)</span></div>
+    <div class="rubric-hdr"><span style="width:70px">Min</span><span style="width:70px">Max</span><span>Grade</span></div>
+    <div id="rubricRows"></div>
+    <button class="btn btn-sm" style="margin-top:.5rem" onclick="addRubRow()"><i class="ti ti-plus"></i>Add band</button>
+  </div>
+
+  <div id="p2gradeSection" class="hidden">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-table"></i>Group grades by day & room</div>
+      <div class="daytabs" id="p2tabs"></div>
+      <div id="p2panels"></div>
+    </div>
+    <div class="btn-row" style="margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="computeGrades()"><i class="ti ti-calculator"></i>Compute assumed grades</button>
+      <button class="btn" onclick="exportGrades()"><i class="ti ti-download"></i>Download Excel</button>
+    </div>
+  </div>
+
+  <div id="p2assumedSection" class="hidden">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-certificate"></i>Room grade summary</div>
+      <div class="daytabs" id="p2atabs"></div>
+      <div id="p2apanels"></div>
+    </div>
+    <div class="btn-row" style="margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="goPg(2)"><i class="ti ti-arrow-right"></i>Next: Grade Adjustment</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ PAGE 3 ════════════════ -->
+<div id="pg2" class="page">
+<div class="container">
+  <div class="page-header">
+    <div class="page-title">Grade Adjustment</div>
+    <div class="page-sub">Select rooms to adjust, then apply a manual factor or auto-scale based on the room's position relative to the overall average.</div>
+  </div>
+
+  <div id="p3placeholder" class="card" style="color:var(--text2);font-size:14px;text-align:center;padding:2.5rem">
+    <i class="ti ti-chart-bar" style="font-size:32px;color:var(--text3);display:block;margin-bottom:.5rem"></i>
+    Complete steps 1 and 2 to unlock the fairness report.
+  </div>
+
+  <div id="p3content" class="hidden">
+    <div class="metrics-row" id="p3metrics"></div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-bar"></i>Room average scores — all days</div>
+      <div class="chart-wrap"><canvas id="p3chart" role="img" aria-label="Bar chart of room scores per day"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-hand-finger"></i>Select rooms to adjust</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Click one or more rooms to select them for grade adjustment.</div>
+      <div class="daytabs" id="p3selTabs"></div>
+      <div id="p3selPanels"></div>
+    </div>
+
+    <div class="factor-section" id="p3factorSection">
+      <div class="card-title" style="margin-bottom:.85rem"><i class="ti ti-adjustments"></i>Adjustment method</div>
+      <div class="factor-row">
+        <div class="factor-option selected" id="fo_auto" onclick="selectFactor('auto')">
+          <div class="factor-option-title"><i class="ti ti-math-function"></i>Auto-scale</div>
+          <div class="factor-option-desc">Multiply each room's score by <strong>Overall avg ÷ Room avg</strong> to bring it up to the cohort mean.</div>
+        </div>
+        <div class="factor-option" id="fo_manual" onclick="selectFactor('manual')">
+          <div class="factor-option-title"><i class="ti ti-pencil"></i>Manual factor</div>
+          <div class="factor-option-desc">Multiply the selected rooms' scores by a factor you specify below.</div>
+        </div>
+      </div>
+      <div id="manualFactorInput" class="hidden" style="margin-top:.85rem">
+        <div class="field" style="max-width:180px">
+          <label>Multiplication factor</label>
+          <input type="number" id="manualFactor" step="0.01" min="0.5" max="3" value="1.1" placeholder="e.g. 1.15">
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:.85rem">
+        <button class="btn btn-primary" onclick="applyFactor()"><i class="ti ti-sparkles"></i>Apply adjustment</button>
+        <button class="btn" onclick="resetAll()"><i class="ti ti-rotate"></i>Reset all</button>
+      </div>
+    </div>
+
+    <div id="p3previewCard" class="card hidden">
+      <div class="card-title"><i class="ti ti-eye"></i>Preview — adjusted vs original</div>
+      <div style="overflow-x:auto">
+        <table class="preview-table" id="p3previewTable">
+          <thead><tr><th>Day</th><th>Room</th><th>Original avg</th><th>Adjusted avg</th><th>Δ Change</th><th>Original grade</th><th>New grade</th></tr></thead>
+          <tbody id="p3previewBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:.85rem">
+        <button class="btn" onclick="exportAdjusted()"><i class="ti ti-download"></i>Download adjusted report</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</main>
+
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let students = [], assignments = [];
+let gradeData = [], assumedResults = [];
+let rubric = [{min:4.5,max:5,grade:'A+'},{min:4.0,max:4.49,grade:'A'},{min:3.5,max:3.99,grade:'B+'},{min:3.0,max:3.49,grade:'B'},{min:2.5,max:2.99,grade:'C'},{min:0,max:2.49,grade:'D'}];
+let selectedRooms = new Set();
+let factorMode = 'auto';
+let adjustedResults = [];
+let p3chartInst = null;
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════ */
+function goPg(i) {
+  document.querySelectorAll('.page').forEach((p,j) => p.classList.toggle('active', j===i));
+  document.querySelectorAll('.nav-tab').forEach((b,j) => {
+    b.classList.toggle('active', j===i);
+    b.setAttribute('aria-selected', j===i);
+  });
+  if (i===2) buildP3();
+}
+
+/* ═══════════════════════════════════════════
+   UPLOAD HELPERS
+═══════════════════════════════════════════ */
+function setupDZ(dzId, inputId, cb) {
+  const dz = document.getElementById(dzId);
+  const inp = document.getElementById(inputId);
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files[0]) cb(e.dataTransfer.files[0]); });
+  dz.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') inp.click(); });
+  inp.addEventListener('change', e => { if(e.target.files[0]) cb(e.target.files[0]); });
+}
+setupDZ('dz0','fi0', f => readStudents(f));
+setupDZ('dz1','fi1', f => readGradeFile(f));
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.className = 'alert alert-' + (type||'ok');
+  el.innerHTML = '<i class="ti ti-'+(type==='err'?'alert-circle':'circle-check')+'"></i>' + text;
+  el.classList.remove('hidden');
+}
+
+function readFileAsArrayBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('File read failed'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PAGE 1 — STUDENT FILE & ASSIGNMENT
+═══════════════════════════════════════════ */
+async function readStudents(file) {
+  try {
+    const buf = await readFileAsArrayBuffer(file);
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws);
+    if (!data.length) { showMsg('fm0','File appears empty','err'); return; }
+    const keys = Object.keys(data[0]);
+    const gk = keys.find(k => k.trim().toUpperCase() === 'G_GPA' || k.includes('G_GPA'));
+    const nk = keys.find(k => k.trim().toUpperCase() === 'N' || k.toLowerCase() === 'name');
+    if (!gk) { showMsg('fm0','Column G_GPA not found. Check your column headers.','err'); return; }
+    students = data
+      .filter(d => d[gk] != null && !isNaN(+d[gk]))
+      .map((d, i) => ({ id:i, name: nk && d[nk] ? String(d[nk]) : 'Student '+(i+1), gpa: +d[gk] }));
+    document.getElementById('fc0').classList.remove('hidden');
+    document.getElementById('fn0').textContent = file.name + ' — ' + students.length + ' students';
+    const gpas = students.map(s=>s.gpa);
+    showMsg('fm0', `Loaded ${students.length} students · GPA range: ${Math.min(...gpas).toFixed(2)} – ${Math.max(...gpas).toFixed(2)}`, 'ok');
+  } catch(ex) { showMsg('fm0','Error reading file: '+ex.message,'err'); }
+}
+
+function shuffle(arr, seed) {
+  const a = [...arr]; let s = seed || 1;
+  for (let i=a.length-1;i>0;i--) { s=(s*1664525+1013904223)&0xffffffff; const j=Math.abs(s)%(i+1); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function gClass(g) { return g>=3.5?'bg-h':g>=2.5?'bg-m':'bg-l'; }
+
+function runAssign() {
+  if (!students.length) { showMsg('fm0','Upload a student file first.','err'); return; }
+  const nDays = Math.max(1, +document.getElementById('cfg_days').value || 3);
+  const nRooms = Math.max(1, +document.getElementById('cfg_rooms').value || 4);
+  const strat = document.getElementById('cfg_strat').value;
+  const sorted = [...students].sort((a,b) => b.gpa - a.gpa);
+  assignments = [];
+  for (let day=0; day<nDays; day++) {
+    let ordered;
+    if (strat==='snake') {
+      ordered = [];
+      const chunk = Math.ceil(sorted.length/nRooms);
+      for (let t=0; t<Math.ceil(sorted.length/chunk); t++) {
+        const sl = sorted.slice(t*chunk,(t+1)*chunk);
+        ordered.push(...(t%2===0 ? sl : [...sl].reverse()));
+      }
+    } else if (strat==='random') {
+      const n=sorted.length, t3=Math.floor(n/3);
+      const hi=shuffle([...sorted].slice(0,t3),day*3);
+      const mi=shuffle([...sorted].slice(t3,2*t3),day*7);
+      const lo=shuffle([...sorted].slice(2*t3),day*11);
+      ordered=[];
+      const mx=Math.max(hi.length,mi.length,lo.length);
+      for(let i=0;i<mx;i++){if(hi[i])ordered.push(hi[i]);if(mi[i])ordered.push(mi[i]);if(lo[i])ordered.push(lo[i]);}
+    } else {
+      const tiers = Array.from({length:nRooms},()=>[]);
+      sorted.forEach((s,i)=>tiers[i%nRooms].push(s));
+      const off=(day*3)%nRooms;
+      tiers.forEach((t,i)=>{const sh=(off+i)%Math.max(t.length,1);for(let j=0;j<sh;j++)t.push(t.shift());});
+      ordered = tiers.flat();
+    }
+    const rooms = Array.from({length:nRooms},(_,i)=>({room:i+1,students:[]}));
+    ordered.forEach((s,i)=>rooms[i%nRooms].students.push(s));
+    assignments.push({day:day+1,rooms});
+  }
+  buildP1Results();
+}
+
+function buildP1Results() {
+  const gpas = students.map(s=>s.gpa);
+  const avg = gpas.reduce((a,b)=>a+b,0)/gpas.length;
+  document.getElementById('p1metrics').innerHTML = `
+    <div class="metric-box"><div class="metric-val">${students.length}</div><div class="metric-lbl">Students</div></div>
+    <div class="metric-box"><div class="metric-val">${assignments.length}</div><div class="metric-lbl">Days</div></div>
+    <div class="metric-box"><div class="metric-val">${assignments[0].rooms.length}</div><div class="metric-lbl">Rooms / day</div></div>
+    <div class="metric-box"><div class="metric-val">${Math.min(...gpas).toFixed(2)}–${Math.max(...gpas).toFixed(2)}</div><div class="metric-lbl">GPA range</div></div>
+    <div class="metric-box"><div class="metric-val">${avg.toFixed(2)}</div><div class="metric-lbl">Avg GPA</div></div>`;
+  buildDayTabPanel('p1tabs','p1panels','p1panel', (day, di, p) => {
+    const wrap = document.createElement('div'); wrap.className='rooms-grid';
+    day.rooms.forEach(rm => {
+      const rg = rm.students.map(s=>s.gpa);
+      const ra = rg.length ? rg.reduce((a,b)=>a+b,0)/rg.length : 0;
+      const pct = (gpas.length ? (ra-Math.min(...gpas))/(Math.max(...gpas)-Math.min(...gpas)||1)*100 : 50).toFixed(0);
+      const div = document.createElement('div'); div.className='room-card';
+      div.innerHTML = `<div class="room-card-header"><span class="room-card-title">Room ${rm.room}</span><span class="room-card-count">${rm.students.length} students</span></div>`
+        + rm.students.map(s=>`<div class="student-row"><span class="student-name">${s.name}</span><span class="badge ${gClass(s.gpa)}">${s.gpa.toFixed(2)}</span></div>`).join('')
+        + `<div class="room-avg-bar"><div class="avg-label">Avg GPA ${ra.toFixed(2)}</div><div class="mini-bar"><div class="mini-bar-fill" style="width:${pct}%"></div></div></div>`;
+      wrap.appendChild(div);
+    });
+    p.appendChild(wrap);
+  });
+  document.getElementById('p1results').classList.remove('hidden');
+}
+
+/* ═══════════════════════════════════════════
+   RUBRIC
+═══════════════════════════════════════════ */
+buildRubricUI();
+function buildRubricUI() {
+  const c = document.getElementById('rubricRows'); c.innerHTML='';
+  rubric.forEach((b, i) => {
+    const r = document.createElement('div'); r.className='rubric-row';
+    r.innerHTML = `<input class="ri-min" type="number" step="0.1" min="0" max="5" value="${b.min}" onchange="rubric[${i}].min=+this.value">
+      <input class="ri-max" type="number" step="0.1" min="0" max="5" value="${b.max}" onchange="rubric[${i}].max=+this.value">
+      <input class="ri-grade" type="text" value="${b.grade}" onchange="rubric[${i}].grade=this.value">
+      <button class="btn btn-sm" onclick="rubric.splice(${i},1);buildRubricUI()" aria-label="Remove band"><i class="ti ti-trash"></i></button>`;
+    c.appendChild(r);
+  });
+}
+function addRubRow() { rubric.push({min:0,max:0,grade:''}); buildRubricUI(); }
+function getGrade(score) {
+  const b = rubric.find(r => score >= r.min && score <= r.max);
+  return b ? b.grade : 'N/A';
+}
+function gradeBadgeClass(g) {
+  const m = {'A+':'bg-grade-ap','A':'bg-grade-a','B+':'bg-grade-bp','B':'bg-grade-b','C':'bg-grade-c','D':'bg-grade-d'};
+  return m[g]||'bg-grade-na';
+}
+function gradeColor(g) {
+  const m = {'A+':'#1A5C22','A':'#255C2A','B+':'#2E6B35','B':'#7A6010','C':'#8A4410','D':'#8A2020'};
+  return m[g]||'var(--text3)';
+}
+function gradeBg(g) {
+  const m = {'A+':'#C8E6CC','A':'#D8EED9','B+':'#E8F4E8','B':'#FEF9DC','C':'#FDECDC','D':'#FAE0E0'};
+  return m[g]||'var(--surface2)';
+}
+
+/* ═══════════════════════════════════════════
+   PAGE 2 — GRADE FILE
+═══════════════════════════════════════════ */
+async function readGradeFile(file) {
+  try {
+    const buf = await readFileAsArrayBuffer(file);
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    // find header row containing 'Group'
+    let hdrIdx = raw.findIndex(row => row && row.some(c => c && String(c).toLowerCase().includes('group')));
+    if (hdrIdx < 0) { showMsg('fm1','Cannot find a header row with "Group" column.','err'); return; }
+    const hdr = raw[hdrIdx].map(c => c==null?'':String(c).trim());
+    const rows = raw.slice(hdrIdx+1).filter(r => r && r.some(c => c!=null && c!==''));
+    // find column indices
+    const findCol = (test) => hdr.findIndex(h => test(h));
+    const groupI = findCol(h => /group\s*number|group/i.test(h));
+    const roomI  = findCol(h => /room\s*number|room/i.test(h));
+    const dayI   = findCol(h => /\bday\b/i.test(h));
+    const s1I    = findCol(h => /student\s*1\s*id|student\s*1.*id/i.test(h));
+    const s2I    = findCol(h => /student\s*2\s*id|student\s*2.*id/i.test(h));
+    if (groupI<0||roomI<0||dayI<0) { showMsg('fm1','Could not find Group, Room, or Day columns. Check the file.','err'); return; }
+    // grade cols: all cols between s1I+1 and s2I-1 are S1 grades; all after s2I+1 are S2 grades
+    const s1GradeCols = [];
+    const s2GradeCols = [];
+    hdr.forEach((h,i) => {
+      if (i===s1I||i===s2I||i===groupI||i===roomI||i===dayI) return;
+      if (/student\s*1/i.test(h) && !/id/i.test(h)) s1GradeCols.push(i);
+      if (/student\s*2/i.test(h) && !/id/i.test(h)) s2GradeCols.push(i);
+    });
+    gradeData = rows.map(row => {
+      const toNum = idx => { const v = row[idx]; const n = parseFloat(v); return isNaN(n) ? null : n; };
+      const s1vals = s1GradeCols.map(toNum).filter(v=>v!=null);
+      const s2vals = s2GradeCols.map(toNum).filter(v=>v!=null);
+      const s1avg = s1vals.length ? s1vals.reduce((a,b)=>a+b,0)/s1vals.length : null;
+      const s2avg = s2vals.length ? s2vals.reduce((a,b)=>a+b,0)/s2vals.length : null;
+      const groupAvg = (s1avg!=null && s2avg!=null) ? (s1avg+s2avg)/2 : (s1avg ?? s2avg);
+      return {
+        group: String(row[groupI]||'').trim(),
+        room: row[roomI]!=null ? +row[roomI] : null,
+        day: row[dayI]!=null ? +row[dayI] : null,
+        s1avg: s1avg!=null ? +s1avg.toFixed(3) : null,
+        s2avg: s2avg!=null ? +s2avg.toFixed(3) : null,
+        groupAvg: groupAvg!=null ? +groupAvg.toFixed(3) : null
+      };
+    }).filter(d => d.room!=null && d.day!=null && d.group!='');
+    if (!gradeData.length) { showMsg('fm1','No valid data rows found after parsing.','err'); return; }
+    document.getElementById('fc1').classList.remove('hidden');
+    document.getElementById('fn1').textContent = file.name + ' — ' + gradeData.length + ' groups';
+    const days = [...new Set(gradeData.map(d=>d.day))].sort((a,b)=>a-b);
+    showMsg('fm1',`Loaded ${gradeData.length} groups across ${days.length} days (Day ${days.join(', ')}).`,'ok');
+    buildGradeInputSection();
+  } catch(ex) { showMsg('fm1','Error: '+ex.message,'err'); }
+}
+
+function buildGradeInputSection() {
+  const days = [...new Set(gradeData.map(d=>d.day))].sort((a,b)=>a-b);
+  buildDayTabPanel('p2tabs','p2panels','p2panel', (dayObj, di, p) => {
+    const day = days[di];
+    const dayRows = gradeData.filter(d=>d.day===day);
+    const rooms = [...new Set(dayRows.map(d=>d.room))].sort((a,b)=>a-b);
+    rooms.forEach(room => {
+      const rrows = dayRows.filter(d=>d.room===room);
+      const validAvgs = rrows.filter(r=>r.groupAvg!=null).map(r=>r.groupAvg);
+      const roomMean = validAvgs.length ? validAvgs.reduce((a,b)=>a+b,0)/validAvgs.length : null;
+      const secDiv = document.createElement('div'); secDiv.style.cssText='margin-bottom:1.25rem';
+      const roomGrade = roomMean!=null ? getGrade(roomMean) : 'N/A';
+      secDiv.innerHTML = `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
+        <span class="room-label-tag"><i class="ti ti-door" style="font-size:12px"></i>Room ${room}</span>
+        ${roomMean!=null?`<span class="room-avg-highlight" style="background:${gradeBg(roomGrade)};color:${gradeColor(roomGrade)};border-color:${gradeColor(roomGrade)}40">Room avg: ${roomMean.toFixed(2)} → ${roomGrade}</span>`:''}
+      </div>`;
+      const tbl = document.createElement('table'); tbl.className='gtable';
+      tbl.innerHTML=`<thead><tr><th>Group</th><th>Student 1 avg</th><th>Student 2 avg</th><th>Group avg</th><th>Override score</th></tr></thead>`;
+      const tbody = document.createElement('tbody');
+      rrows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${row.group}</strong></td>
+          <td><span class="score-pill">${row.s1avg!=null?row.s1avg.toFixed(2):'—'}</span></td>
+          <td><span class="score-pill">${row.s2avg!=null?row.s2avg.toFixed(2):'—'}</span></td>
+          <td><strong>${row.groupAvg!=null?row.groupAvg.toFixed(2):'—'}</strong></td>
+          <td><input type="number" step="0.01" min="0" max="5" id="ov_d${day}_r${room}_g${row.group}" placeholder="—" value=""></td>`;
+        tbody.appendChild(tr);
+      });
+      const footTr = document.createElement('tr');
+      footTr.innerHTML = `<td colspan="3" style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Room ${room} average</td>
+        <td id="rm_avg_d${day}_r${room}">${roomMean!=null?roomMean.toFixed(2):'—'}</td><td></td>`;
+      const tfoot = document.createElement('tfoot'); tfoot.appendChild(footTr);
+      tbl.appendChild(tbody); tbl.appendChild(tfoot);
+      secDiv.appendChild(tbl); p.appendChild(secDiv);
+    });
+  }, days);
+  document.getElementById('p2gradeSection').classList.remove('hidden');
+}
+
+function computeGrades() {
+  if (!gradeData.length) { alert('Upload a grade file first.'); return; }
+  readRubricFromUI();
+  assumedResults = [];
+  const days = [...new Set(gradeData.map(d=>d.day))].sort((a,b)=>a-b);
+  days.forEach(day => {
+    const dayRows = gradeData.filter(d=>d.day===day);
+    const rooms = [...new Set(dayRows.map(d=>d.room))].sort((a,b)=>a-b);
+    rooms.forEach(room => {
+      const rrows = dayRows.filter(d=>d.room===room);
+      const groups = rrows.map(row => {
+        const ovEl = document.getElementById(`ov_d${day}_r${room}_g${row.group}`);
+        const ov = ovEl && ovEl.value!=='' ? +ovEl.value : null;
+        const score = ov!=null ? ov : row.groupAvg;
+        return { group:row.group, s1avg:row.s1avg, s2avg:row.s2avg, groupAvg:row.groupAvg, usedScore:score, grade:score!=null?getGrade(score):'N/A' };
+      });
+      const valid = groups.filter(g=>g.usedScore!=null).map(g=>g.usedScore);
+      const roomMean = valid.length ? valid.reduce((a,b)=>a+b,0)/valid.length : null;
+      assumedResults.push({ day, room, groups, roomMeanScore: roomMean!=null?+roomMean.toFixed(3):null, roomGrade: roomMean!=null?getGrade(roomMean):'N/A' });
+    });
+  });
+  adjustedResults = assumedResults.map(r=>({...r, adjusted:null, adjustedGrade:null}));
+  buildAssumedSection();
+  document.getElementById('p2assumedSection').classList.remove('hidden');
+}
+
+function buildAssumedSection() {
+  const days = [...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b);
+  buildDayTabPanel('p2atabs','p2apanels','p2apanel', (dayObj, di, p) => {
+    const day = days[di];
+    const dayRooms = assumedResults.filter(r=>r.day===day);
+    dayRooms.forEach(rm => {
+      const secDiv = document.createElement('div'); secDiv.style.cssText='margin-bottom:1.25rem';
+      const g = rm.roomGrade;
+      secDiv.innerHTML = `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
+        <span class="room-label-tag"><i class="ti ti-door" style="font-size:12px"></i>Room ${rm.room}</span>
+        <span class="room-avg-highlight" style="background:${gradeBg(g)};color:${gradeColor(g)};border-color:${gradeColor(g)}50">
+          ${rm.roomMeanScore!=null?rm.roomMeanScore.toFixed(2):'—'} / 5 → ${g}
+        </span>
+      </div>`;
+      const tbl = document.createElement('table'); tbl.className='gtable';
+      tbl.innerHTML=`<thead><tr><th>Group</th><th>S1 avg</th><th>S2 avg</th><th>Score used</th><th>Grade</th></tr></thead>`;
+      const tbody=document.createElement('tbody');
+      rm.groups.forEach(gr=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td><strong>${gr.group}</strong></td>
+          <td>${gr.s1avg!=null?gr.s1avg.toFixed(2):'—'}</td>
+          <td>${gr.s2avg!=null?gr.s2avg.toFixed(2):'—'}</td>
+          <td><strong>${gr.usedScore!=null?gr.usedScore.toFixed(2):'—'}</strong></td>
+          <td><span class="badge ${gradeBadgeClass(gr.grade)}">${gr.grade}</span></td>`;
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody); secDiv.appendChild(tbl); p.appendChild(secDiv);
+    });
+  }, days);
+}
+
+/* ═══════════════════════════════════════════
+   PAGE 3 — ADJUSTMENT
+═══════════════════════════════════════════ */
+function buildP3() {
+  if (!assumedResults.length) {
+    document.getElementById('p3placeholder').classList.remove('hidden');
+    document.getElementById('p3content').classList.add('hidden');
+    return;
+  }
+  document.getElementById('p3placeholder').classList.add('hidden');
+  document.getElementById('p3content').classList.remove('hidden');
+
+  const allScores = assumedResults.filter(r=>r.roomMeanScore!=null).map(r=>r.roomMeanScore);
+  const overall = allScores.reduce((a,b)=>a+b,0)/allScores.length;
+  const days = [...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b);
+  const minS = Math.min(...allScores), maxS = Math.max(...allScores);
+
+  document.getElementById('p3metrics').innerHTML = `
+    <div class="metric-box"><div class="metric-val">${days.length}</div><div class="metric-lbl">Days</div></div>
+    <div class="metric-box"><div class="metric-val">${assumedResults.length}</div><div class="metric-lbl">Room-days</div></div>
+    <div class="metric-box"><div class="metric-val">${overall.toFixed(2)}</div><div class="metric-lbl">Overall avg score</div></div>
+    <div class="metric-box"><div class="metric-val">${minS.toFixed(2)} – ${maxS.toFixed(2)}</div><div class="metric-lbl">Score range</div></div>
+    <div class="metric-box"><div class="metric-val">${getGrade(overall)}</div><div class="metric-lbl">Overall grade</div></div>`;
+
+  buildP3Chart(days);
+  buildP3SelectRooms(days);
+}
+
+function buildP3Chart(days) {
+  if (p3chartInst) { p3chartInst.destroy(); p3chartInst=null; }
+  const labels=[], dataScores=[], dataAdj=[];
+  assumedResults.forEach(rm=>{
+    labels.push(`D${rm.day}·R${rm.room}`);
+    dataScores.push(rm.roomMeanScore!=null?+rm.roomMeanScore.toFixed(2):null);
+    const adj = adjustedResults.find(a=>a.day===rm.day&&a.room===rm.room);
+    dataAdj.push(adj&&adj.adjusted!=null?+adj.adjusted.toFixed(2):null);
+  });
+  const ctx = document.getElementById('p3chart');
+  const datasets = [{label:'Room avg score',data:dataScores,backgroundColor:'rgba(196,98,45,.18)',borderColor:'var(--accent)',borderWidth:2,borderRadius:5}];
+  if (dataAdj.some(v=>v!=null)) datasets.push({label:'Adjusted score',data:dataAdj,backgroundColor:'rgba(58,125,68,.18)',borderColor:'var(--green)',borderWidth:2,borderRadius:5});
+  p3chartInst = new Chart(ctx,{
+    type:'bar', data:{labels, datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:datasets.length>1,position:'top',labels:{font:{family:'DM Sans',size:12},boxWidth:12,color:'#6B6157'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#9E9187',font:{size:11}}},
+        y:{min:0,max:5,ticks:{color:'#9E9187',font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,.04)'},title:{display:true,text:'Score / 5',color:'#9E9187',font:{size:11}}}
+      }
+    }
+  });
+}
+
+function buildP3SelectRooms(days) {
+  buildDayTabPanel('p3selTabs','p3selPanels','p3spanel',(dayObj,di,p)=>{
+    const day=days[di];
+    const dayRooms=assumedResults.filter(r=>r.day===day).sort((a,b)=>a.room-b.room);
+    const grid=document.createElement('div'); grid.className='room-select-grid'; grid.style.marginBottom='0';
+    dayRooms.forEach(rm=>{
+      const key=`d${rm.day}r${rm.room}`;
+      const card=document.createElement('div');
+      card.className='room-select-card'+(selectedRooms.has(key)?' selected':'');
+      card.id='rsc_'+key;
+      const adj=adjustedResults.find(a=>a.day===rm.day&&a.room===rm.room);
+      const displayScore=adj&&adj.adjusted!=null?adj.adjusted:rm.roomMeanScore;
+      const displayGrade=displayScore!=null?getGrade(displayScore):'N/A';
+      card.innerHTML=`<div class="rsc-name">Room ${rm.room}</div>
+        <div class="rsc-score">${displayScore!=null?displayScore.toFixed(2):'—'}</div>
+        <div class="rsc-grade">${displayGrade} ${adj&&adj.adjusted!=null?'<span style="color:var(--green);font-size:10px">↑ adjusted</span>':''}</div>`;
+      card.onclick=()=>toggleRoomSelect(key,card);
+      grid.appendChild(card);
+    });
+    p.appendChild(grid);
+  }, days);
+}
+
+function toggleRoomSelect(key, card) {
+  if (selectedRooms.has(key)) { selectedRooms.delete(key); card.classList.remove('selected'); }
+  else { selectedRooms.add(key); card.classList.add('selected'); }
+}
+
+function selectFactor(mode) {
+  factorMode=mode;
+  document.getElementById('fo_auto').classList.toggle('selected',mode==='auto');
+  document.getElementById('fo_manual').classList.toggle('selected',mode==='manual');
+  document.getElementById('manualFactorInput').classList.toggle('hidden',mode!=='manual');
+}
+
+function applyFactor() {
+  if (!selectedRooms.size) { alert('Select at least one room first.'); return; }
+  const allScores=assumedResults.filter(r=>r.roomMeanScore!=null).map(r=>r.roomMeanScore);
+  const overallAvg=allScores.reduce((a,b)=>a+b,0)/allScores.length;
+  adjustedResults = assumedResults.map(r=>{
+    const key=`d${r.day}r${r.room}`;
+    if (!selectedRooms.has(key)) return {...r,adjusted:null,adjustedGrade:null};
+    let factor;
+    if (factorMode==='auto') {
+      factor = r.roomMeanScore ? overallAvg/r.roomMeanScore : 1;
+    } else {
+      factor = +document.getElementById('manualFactor').value || 1;
+    }
+    const adj = r.roomMeanScore!=null ? Math.min(5, r.roomMeanScore*factor) : null;
+    return {...r, adjusted:adj!=null?+adj.toFixed(3):null, adjustedGrade:adj!=null?getGrade(adj):null};
+  });
+  buildP3Preview();
+  buildP3Chart([...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b));
+  buildP3SelectRooms([...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b));
+}
+
+function resetAll() {
+  adjustedResults=assumedResults.map(r=>({...r,adjusted:null,adjustedGrade:null}));
+  selectedRooms.clear();
+  document.getElementById('p3previewCard').classList.add('hidden');
+  buildP3Chart([...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b));
+  buildP3SelectRooms([...new Set(assumedResults.map(r=>r.day))].sort((a,b)=>a-b));
+}
+
+function buildP3Preview() {
+  const tbody=document.getElementById('p3previewBody'); tbody.innerHTML='';
+  adjustedResults.forEach(rm=>{
+    if(rm.adjusted==null)return;
+    const diff=rm.adjusted-rm.roomMeanScore;
+    const diffStr=(diff>=0?'+':'')+diff.toFixed(2);
+    const diffClass=diff>0?'delta-pos':diff<0?'delta-neg':'delta-zero';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>Day ${rm.day}</td><td>Room ${rm.room}</td>
+      <td><strong>${rm.roomMeanScore!=null?rm.roomMeanScore.toFixed(2):'—'}</strong></td>
+      <td><strong>${rm.adjusted.toFixed(2)}</strong></td>
+      <td class="${diffClass}">${diffStr}</td>
+      <td><span class="badge ${gradeBadgeClass(rm.roomGrade)}">${rm.roomGrade}</span></td>
+      <td><span class="badge ${gradeBadgeClass(rm.adjustedGrade)}">${rm.adjustedGrade}</span></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('p3previewCard').classList.remove('hidden');
+}
+
+/* ═══════════════════════════════════════════
+   SHARED: DAY TAB BUILDER
+═══════════════════════════════════════════ */
+function buildDayTabPanel(tabsId, panelsId, panelClass, buildFn, daysArr) {
+  const tabs=document.getElementById(tabsId), panels=document.getElementById(panelsId);
+  tabs.innerHTML=''; panels.innerHTML='';
+  const days = daysArr || [...new Set(assignments.map(a=>a.day))].sort((a,b)=>a-b);
+  days.forEach((day, di) => {
+    const t=document.createElement('button'); t.className='dtab'+(di===0?' active':'');
+    t.textContent='Day '+day;
+    t.onclick=()=>{ document.querySelectorAll('#'+tabsId+' .dtab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.'+panelClass).forEach(x=>x.classList.add('hidden')); t.classList.add('active'); document.getElementById(panelClass+di).classList.remove('hidden'); };
+    tabs.appendChild(t);
+    const p=document.createElement('div'); p.id=panelClass+di; p.className=panelClass+(di>0?' hidden':'');
+    const dayObj = assignments.length ? assignments.find(a=>a.day===day) : {day, rooms:[]};
+    buildFn(dayObj, di, p);
+    panels.appendChild(p);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   RUBRIC FROM UI
+═══════════════════════════════════════════ */
+function readRubricFromUI() {
+  rubric=[];
+  document.querySelectorAll('.rubric-row').forEach(row=>{
+    const ins=row.querySelectorAll('input');
+    if(ins.length>=3) rubric.push({min:+ins[0].value,max:+ins[1].value,grade:ins[2].value});
+  });
+}
+
+/* ═══════════════════════════════════════════
+   EXPORTS
+═══════════════════════════════════════════ */
+function exportAssign() {
+  if(!assignments.length)return;
+  const rows=[['Day','Room','Student name','GPA','GPA tier']];
+  assignments.forEach(d=>d.rooms.forEach(rm=>rm.students.forEach(s=>rows.push([`Day ${d.day}`,`Room ${rm.room}`,s.name,s.gpa.toFixed(2),s.gpa>=3.5?'High':s.gpa>=2.5?'Mid':'Low']))));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Assignments'); XLSX.writeFile(wb,'room_assignments.xlsx');
+}
+function exportGrades() {
+  if(!assumedResults.length)return;
+  const rows=[['Day','Room','Group','S1 avg','S2 avg','Group avg','Grade']];
+  assumedResults.forEach(rm=>rm.groups.forEach(g=>rows.push([`Day ${rm.day}`,`Room ${rm.room}`,g.group,g.s1avg!=null?g.s1avg.toFixed(2):'',g.s2avg!=null?g.s2avg.toFixed(2):'',g.usedScore!=null?g.usedScore.toFixed(2):'',g.grade])));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Grades'); XLSX.writeFile(wb,'grade_analysis.xlsx');
+}
+function exportAdjusted() {
+  const rows=[['Day','Room','Original avg','Adjusted avg','Change','Original grade','New grade']];
+  adjustedResults.forEach(rm=>{
+    const adj=rm.adjusted!=null?rm.adjusted.toFixed(2):'';
+    const diff=rm.adjusted!=null?(rm.adjusted-(rm.roomMeanScore||0)).toFixed(2):'';
+    rows.push([`Day ${rm.day}`,`Room ${rm.room}`,rm.roomMeanScore!=null?rm.roomMeanScore.toFixed(2):'',adj,diff,rm.roomGrade,rm.adjustedGrade||rm.roomGrade]);
+  });
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Adjusted'); XLSX.writeFile(wb,'adjusted_grades.xlsx');
+}
+</script>
+</body>
+</html>
